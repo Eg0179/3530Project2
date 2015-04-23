@@ -12,7 +12,7 @@
 #include <sys/socket.h>	/* network system functions */
 #include <netinet/in.h>	/* protocol & struct definitions */
 
-#define BACKLOG	5
+#define BACKLOG	20
 #define BUF_SIZE	4096
 #define LISTEN_PORT	8888
 
@@ -21,5 +21,7 @@ void *client_handler(void *arg);
 void initializeServer(int portNumber);
 char *cached(char *hostname);
 void newCacheFile(char *hostname, char *response);
+int checkBlackList(char *hostname);
+void readfromCache(int sock,char *hostname);
 
 #endif
