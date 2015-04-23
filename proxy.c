@@ -79,6 +79,7 @@ void *client_handler(void *sock_desc) {
 	int msg_size,i,j,bytes,sent,received;
 	char buf[BUF_SIZE];
     char hostname[500];
+    char path[500];
     char httprequest[500];
     char request[BUF_SIZE];
 	int sock = *(int*)sock_desc;
@@ -88,6 +89,7 @@ void *client_handler(void *sock_desc) {
 
 	printf("In client_handler\n");
     memset(buf,0,BUF_SIZE);
+    //memset(hostname, 0, 500);
 	while((msg_size = recv(sock, buf, BUF_SIZE, 0)) > 0){
 
         memset(httprequest, 0, 500);
@@ -99,18 +101,45 @@ void *client_handler(void *sock_desc) {
             httprequest[i]=buf[i];
             i++;
         }
+        i=5;
+        if(hostname[0] == '\0'){
         for(i=5,j=0; i<strlen(httprequest); i++){
-            if(isspace(httprequest[i])){
+            if(isspace(httprequest[i]) || httprequest[i]=='/'){
                break;
             }
             hostname[j]=httprequest[i];
                 j++;
         }
-
+        }
+        if(httprequest[i]=='/'){
+            for(i,j=0; i<strlen(httprequest); i++){
+                if(isspace(httprequest[i])){
+                    break;
+                }
+                path[j]=httprequest[i];
+                j++;
+            }
+        }
+        else{
+            path[0]='/';
+        }
+        //printf("%d\n",i );
         printf("httprequest:%s\n", httprequest);
         printf("hostname:%s\n", hostname);
-
+        printf("path:%s\n",path);
         memset(request, 0, BUF_SIZE);
+
+        if(strstr(httprequest, "favicon")!=NULL){
+            strcpy(request, "HTTP/1.0 404 Not Found\r\n");
+            send(sock,request,strlen(request),0);
+            break;
+        }
+        if(checkBlackList(hostname)){
+            strcpy(request, "HTTP/1.0 200 OK\r\nContent-Type: text/html\n\n<html>\n<head>\n<title>Success</title>\n</head>\n<body>\nBlocked\n</body>\n</html>\n");
+            send(sock, request, strlen(request),0);
+            break;
+        }
+        //memset(request, 0, BUF_SIZE);
         char *req = cached(hostname);
         if(req == NULL){
             free(req);     
@@ -134,7 +163,8 @@ void *client_handler(void *sock_desc) {
                 printf("connected\n");
 
             memset(httprequest,0,500);
-            sprintf(httprequest, "GET http://%s HTTP/1.0\n\n",hostname);
+            //sprintf(httprequest, "GET http://%s HTTP/1.0\n\n",hostname);
+            sprintf(httprequest, "GET %s HTTP/1.0\nHost:%s\n\n",path,hostname);
             printf("\n%s", httprequest);
 
             if(send(newSock,httprequest, strlen(httprequest),0)<0){
@@ -142,24 +172,31 @@ void *client_handler(void *sock_desc) {
                 close(newSock);
                 pthread_exit(&ret);
             }
-
+            /*
             if(recv(newSock, request, BUF_SIZE,0) <0){
                 printf("No response\n");
                 close(newSock);
                 pthread_exit(&ret);
+            }*/
+            while(recv(newSock,request,BUF_SIZE,0)>0){
+                newCacheFile(hostname, request);
+                memset(request,0,BUF_SIZE);
             }
             close(newSock);
-            newCacheFile(hostname, request);
-        
+            //newCacheFile(hostname, request);
+            
+            /*
             if(send(sock, request, BUF_SIZE,0)<0){
                 printf("Error sending to client\n");
-            }
+            }*/
         }
+        /*
         else{
             if(send(sock, req, BUF_SIZE,0)<0){
                 printf("Error sending to client\n");
             }
-        }
+        }*/
+        readfromCache(sock, hostname);
 
         printf("done sending\n");     
         memset(buf,0,BUF_SIZE);
@@ -194,8 +231,31 @@ void newCacheFile(char *hostname, char *response){
     char *cachefile = (char *)malloc(strlen(hostname)+5);
     sprintf(cachefile, "%s.txt", hostname);
 
-    FILE *f = fopen(cachefile, "w");
+    FILE *f = fopen(cachefile, "a");//"a" append to end
 
     fprintf(f, "%s\n", response);
     fclose(f);
+}
+
+int checkBlackList(char *hostname){
+    FILE *f = fopen("blacklist.txt", "r");
+    char tmp[60];
+    while(fgets(tmp,60,f)!=NULL){
+        if(strstr(tmp,hostname)!=NULL){
+            return 1;
+        }
+    }
+    return 0;
+}
+void readfromCache(int sock, char *hostname){
+    //int sock = *(int*)sock_desc;
+    char *cachefile = (char *)malloc(strlen(hostname)+5);
+    sprintf(cachefile, "%s.txt", hostname);
+
+    FILE *f = fopen(cachefile, "r");
+    char tmp[60];
+    while(fgets(tmp,60,f)!=NULL){
+        send(sock, tmp, strlen(tmp), 0);
+        memset(tmp,0,60);
+    }
 }
