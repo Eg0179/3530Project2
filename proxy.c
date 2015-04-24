@@ -286,7 +286,7 @@ void censor(char *response){
         char *found = strstr(response, badWords[i]);
     }
     strcpy(response, bufc);
-    fclose(f);
+    //fclose(f);
     printf("ok done censoring\n");
 
 }
