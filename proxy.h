@@ -17,11 +17,15 @@
 #define LISTEN_PORT	8888
 
 int threadCount = BACKLOG;
+char badWords[200][30];
+int totalbadWords;
 void *client_handler(void *arg);
 void initializeServer(int portNumber);
-char *cached(char *hostname);
-void newCacheFile(char *hostname, char *response);
+char *cached(char *hostname, char *path);
+void newCacheFile(char *hostname, char *path, char *response);
 int checkBlackList(char *hostname);
 void readfromCache(int sock,char *hostname);
+void censor(char *response);
+void getBadwords();
 
 #endif
