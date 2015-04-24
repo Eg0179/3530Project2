@@ -3,9 +3,12 @@
 Eric Guzman 
 Russell Elliott
 -------------------------
-Compile----
+
+----Compile----
 gcc -o proxy proxy.c -lpthread
-Run---
+
+----Run----
 ./proxy <port>
-Usage---
+
+----Usage----
 Using a web browser in the URL type <ip-address>:<port>/www.domain.com
